@@ -1,22 +1,34 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import '../App.css'
+import '../../../../App.css'
 
 interface Props { league: string; api: string }
 
 export default function Standings({ league, api }: Props) {
-  const [data, setData] = useState<any[]>([])
+  interface Standing {
+  team_id: number; team_name: string; team_crest: string;
+  position: number; played: number; won: number; draw: number;
+  lost: number; goals_for: number; goals_against: number;
+  goal_difference: number; points: number;
+}
+const [data, setData] = useState<Standing[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setLoading(true)
-    setError('')
-    fetch(`${api}/standings/${league}`)
-      .then(r => r.json())
-      .then(d => { setData(Array.isArray(d) ? d : []); setLoading(false) })
-      .catch(() => { setError('Failed to load standings.'); setLoading(false) })
-  }, [league, api])
+  let cancelled = false
+  const load = async () => {
+    try {
+      const r = await fetch(`${api}/standings/${league}`)
+      const d = await r.json()
+      if (!cancelled) { setData(Array.isArray(d) ? d : []); setLoading(false) }
+    } catch {
+      if (!cancelled) { setError('Failed to load standings.'); setLoading(false) }
+    }
+  }
+  load()
+  return () => { cancelled = true }
+}, [league, api])
 
   if (loading) return <div className="loading"><span className="spinner" /> Loading standings...</div>
   if (error) return <div className="error-msg">{error}</div>

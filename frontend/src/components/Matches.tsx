@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react'
 
 interface Props { league: string; api: string }
 
-function MatchCard({ m }: { m: any }) {
+interface Match {
+  match_id: number; utc_date: string; matchday: number;
+  home_team: string; home_crest: string; home_score: number;
+  away_team: string; away_crest: string; away_score: number;
+}
+
+function MatchCard({ m }: { m: Match }) {
   const date = new Date(m.utc_date)
   const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const homeWon = m.home_score > m.away_score
@@ -31,18 +37,24 @@ function MatchCard({ m }: { m: any }) {
 }
 
 export default function Matches({ league, api }: Props) {
-  const [data, setData] = useState<any[]>([])
+  const [data, setData] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setLoading(true)
-    setError('')
-    fetch(`${api}/matches/${league}`)
-      .then(r => r.json())
-      .then(d => { setData(Array.isArray(d) ? d : []); setLoading(false) })
-      .catch(() => { setError('Failed to load matches.'); setLoading(false) })
-  }, [league, api])
+  let cancelled = false
+  const load = async () => {
+    try {
+      const r = await fetch(`${api}/matches/${league}`)
+      const d = await r.json()
+      if (!cancelled) { setData(Array.isArray(d) ? d : []); setLoading(false) }
+    } catch {
+      if (!cancelled) { setError('Failed to load matches.'); setLoading(false) }
+    }
+  }
+  load()
+  return () => { cancelled = true }
+}, [league, api])
 
   if (loading) return <div className="loading"><span className="spinner" /> Loading matches...</div>
   if (error) return <div className="error-msg">{error}</div>

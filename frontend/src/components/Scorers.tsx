@@ -4,18 +4,29 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 interface Props { league: string; api: string }
 
 export default function Scorers({ league, api }: Props) {
-  const [data, setData] = useState<any[]>([])
+  interface Scorer {
+  player_id: number; player_name: string; team_name: string;
+  team_crest: string; nationality: string; rank: number;
+  goals: number; assists: number; penalties: number;
+}
+const [data, setData] = useState<Scorer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setLoading(true)
-    setError('')
-    fetch(`${api}/scorers/${league}`)
-      .then(r => r.json())
-      .then(d => { setData(Array.isArray(d) ? d : []); setLoading(false) })
-      .catch(() => { setError('Failed to load scorers.'); setLoading(false) })
-  }, [league, api])
+  let cancelled = false
+  const load = async () => {
+    try {
+      const r = await fetch(`${api}/standings/${league}`)
+      const d = await r.json()
+      if (!cancelled) { setData(Array.isArray(d) ? d : []); setLoading(false) }
+    } catch {
+      if (!cancelled) { setError('Failed to load standings.'); setLoading(false) }
+    }
+  }
+  load()
+  return () => { cancelled = true }
+}, [league, api])
 
   if (loading) return <div className="loading"><span className="spinner" /> Loading scorers...</div>
   if (error) return <div className="error-msg">{error}</div>
